@@ -1,6 +1,11 @@
-CREATE DATABASE GestionStockDB;
+IF NOT EXISTS(SELECT * FROM sys.databases where name = 'GestionStockDB')
+BEGIN
+	CREATE DATABASE [GestionStockDB]
+END
+GO
 
-USE GestionStockDB;
+USE [GestionStockDB]
+GO
 
 CREATE TABLE Categorias (
     Id INT PRIMARY KEY IDENTITY,
@@ -24,7 +29,7 @@ VALUES (10, DATEADD(DAY, -3, GETDATE()), 2),
        (60, DATEADD(HOUR, -12, GETDATE()), 1),
        (0.5, DATEADD(DAY, -5, GETDATE()), 2),
        (0.5, DATEADD(DAY, -2, GETDATE()), 1),
-       (15, DATEADD(MINUTE, -30, GETDATE()), 2),
+       (15, DATEADD(MINUTE, -30, GETDATE()), 2)
 
 CREATE TABLE Usuarios (
     Id INT PRIMARY KEY IDENTITY,
