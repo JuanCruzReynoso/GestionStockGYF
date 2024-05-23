@@ -7,6 +7,7 @@ CREATE TABLE Categorias (
     Nombre NVARCHAR(50) NOT NULL
 );
 
+--Creo las 2 categorias a utilizar en la prueba
 INSERT INTO Categorias (Nombre) VALUES ('Computación'), ('Telefonía');
 
 CREATE TABLE Productos (
@@ -17,6 +18,7 @@ CREATE TABLE Productos (
     FOREIGN KEY (IdCategoria) REFERENCES Categorias(Id)
 );
 
+--Creo los productos ejemplificados en el desafio para probar filtrado
 INSERT INTO Productos (Precio, FechaCarga, IdCategoria) 
 VALUES (10, DATEADD(DAY, -3, GETDATE()), 2),
        (60, DATEADD(HOUR, -12, GETDATE()), 1),
@@ -29,4 +31,3 @@ CREATE TABLE Usuarios (
     Nombre NVARCHAR(50) NOT NULL,
     Contraseña NVARCHAR(100) NOT NULL
 );
- 
