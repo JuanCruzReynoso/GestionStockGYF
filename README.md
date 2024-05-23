@@ -4,7 +4,7 @@
 
 ### Descripción del Proyecto
 
-Este proyecto consiste en una web API desarrollada en .NET 8 que ofrece funcionalidades para la gestión de stock de un comercio que vende productos de dos categorías específicas. Utiliza Entity Framework Core y SQL Server como base de datos.
+Este proyecto consiste en una web API desarrollada en .NET 8 que ofrece funcionalidades para la gestión de stock de un comercio que vende productos de dos categorías específicas. Utiliza Entity Framework Core y SQL Server como base de datos y JWT para autenticacion.
 
 ### Estructura del Repositorio
 
