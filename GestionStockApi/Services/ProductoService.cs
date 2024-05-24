@@ -1,5 +1,6 @@
 ﻿using GestionStockApi.DTOs;
 using GestionStockApi.Models;
+using GestionStockApi.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace GestionStockApi.Services
@@ -7,12 +8,12 @@ namespace GestionStockApi.Services
 
     public interface IProductoService
     {
-        Task<IEnumerable<ProductoDTO>> GetProductos();
-        Task<ProductoDTO> GetProducto(int id);
-        Task<ProductoDTO> CrearProducto(int idCategoria, decimal precio);
-        Task<int> ModificarProducto(int id, int idCategoria, decimal precio);
-        Task<bool> EliminarProducto(int id);
-        List<ProductoDTO> FiltrarProductosPorPresupuesto(int presupuesto);
+        Task<(ProductResult result, IEnumerable<ProductoDTO>? productos)> GetProductos();
+        Task<(ProductResult result, ProductoDTO? producto)> GetProducto(int id);
+        Task<ProductResult> CrearProducto(int idCategoria, decimal precio);
+        Task<ProductResult> ModificarProducto(int id, int idCategoria, decimal precio);
+        Task<ProductResult> EliminarProducto(int id);
+        Task<(ProductResult result, List<ProductoDTO>? productos)> FiltrarProductosPorPresupuesto(int presupuesto);
     }
 
     public class ProductoService : IProductoService
@@ -24,41 +25,43 @@ namespace GestionStockApi.Services
             _dbContext = dbContext;
         }
 
-        public async Task<IEnumerable<ProductoDTO>> GetProductos()
+        public async Task<(ProductResult, IEnumerable<ProductoDTO>?)> GetProductos()
         {
             var productos = await _dbContext.Productos
                 .Include(p => p.IdCategoriaNavigation)
                 .ToListAsync();
 
+            // Verifico si existen productos 
             if (!productos.Any())
             {
-                return new List<ProductoDTO>(); // Retorna una lista vacía en caso de no existir registros.
+                return (ProductResult.NoProducts, null);
             }
 
-            return productos.Select(p => MapProducto(p)).ToList();
+            return (ProductResult.Success, productos.Select(p => MapProducto(p)).ToList());
         }
 
-        public async Task<ProductoDTO> GetProducto(int id)
+        public async Task<(ProductResult, ProductoDTO?)> GetProducto(int id)
         {
             var producto = await _dbContext.Productos
                 .Include(p => p.IdCategoriaNavigation)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
+            // Verifico si el producto existe
             if (producto == null)
             {
-                return null;
+                return (ProductResult.ProductNotFound, null);
             }
 
-            return MapProducto(producto);
+            return (ProductResult.Success, MapProducto(producto));
         }
 
-        public async Task<ProductoDTO> CrearProducto(int idCategoria, decimal precio)
+        public async Task<ProductResult> CrearProducto(int idCategoria, decimal precio)
         {
-            // Verifica si la categoría existe
+            // Verifico si la categoría existe
             var categoria = await _dbContext.Categorias.FindAsync(idCategoria);
             if (categoria == null)
             {
-                return null;
+                return ProductResult.CategoryNotFound; // La categoría no es válida
             }
 
             var nuevoProducto = new Producto
@@ -68,62 +71,76 @@ namespace GestionStockApi.Services
                 IdCategoria = idCategoria
             };
 
+            // Guarda el producto
             _dbContext.Productos.Add(nuevoProducto);
             await _dbContext.SaveChangesAsync();
 
-            return MapProducto(nuevoProducto);
+            return ProductResult.Success;
         }
 
-        public async Task<int> ModificarProducto(int id, int idCategoria, decimal precio)
+        public async Task<ProductResult> ModificarProducto(int id, int idCategoria, decimal precio)
         {
-            // Verifica si el producto existe
+            // Verifico si el producto existe
             var producto = await _dbContext.Productos.FindAsync(id);
             if (producto == null)
             {
-                return 0; // El producto no existe
+                return ProductResult.ProductNotFound;
             }
 
             // Verifica si la categoría es válida
             var categoria = await _dbContext.Categorias.FindAsync(idCategoria);
             if (categoria == null)
             {
-                return -1; // La categoría no es válida
+                return ProductResult.CategoryNotFound; // La categoría no es válida
             }
 
-            // Actualiza los atributos del producto
+            // Modifico los atributos del producto
             producto.IdCategoria = idCategoria;
             producto.Precio = precio;
 
-            // Guarda los cambios
-            return await _dbContext.SaveChangesAsync();
+            // Guardo los cambios
+            await _dbContext.SaveChangesAsync();
 
+            return ProductResult.Success;
         }
 
 
-        public async Task<bool> EliminarProducto(int id)
+        public async Task<ProductResult> EliminarProducto(int id)
         {
+            // Verifico si el producto existe
             var producto = await _dbContext.Productos.FindAsync(id);
             if (producto == null)
             {
-                return false;
+                return ProductResult.ProductNotFound;
             }
 
+            // Elimino y guardo los cambios
             _dbContext.Productos.Remove(producto);
             await _dbContext.SaveChangesAsync();
 
-            return true;
+            return ProductResult.Success;
         }
-        public List<ProductoDTO> FiltrarProductosPorPresupuesto(int presupuesto)
+
+        public async Task<(ProductResult, List<ProductoDTO>?)> FiltrarProductosPorPresupuesto(int presupuesto)
         {
             var productosFiltrados = new List<ProductoDTO>();
 
-            // Obtener todos los productos ordenados por precio descendente
-            var todosLosProductos = _dbContext.Productos
+            // Obtengo todos los productos ordenados por precio descendente
+            var todosLosProductos = await _dbContext.Productos
                 .Include(p => p.IdCategoriaNavigation)
                 .OrderByDescending(p => p.Precio)
-                .ToList();
+                .ToListAsync();
 
-            // Filtrar productos por presupuesto
+            if (!todosLosProductos.Any())
+            {
+                return (ProductResult.NoProducts, null);
+            }
+
+            // Variables para almacenar los productos de cada categoría
+            Producto? productoComputacion = null;
+            Producto? productoTelefonia = null;
+
+            // Filtro productos por presupuesto y por categoría, solo devuelvo uno por categoría
             foreach (var categoriaProductos in todosLosProductos.GroupBy(p => p.IdCategoria))
             {
                 var productoMasCaro = categoriaProductos.FirstOrDefault();
@@ -138,15 +155,32 @@ namespace GestionStockApi.Services
 
                 if (productoMasCaro != null)
                 {
-                    productosFiltrados.Add(MapProducto(productoMasCaro));
+                    if (productoMasCaro.IdCategoria == 1) // Computación
+                    {
+                        productoComputacion = productoMasCaro;
+                    }
+                    else if (productoMasCaro.IdCategoria == 2) // Telefonía
+                    {
+                        productoTelefonia = productoMasCaro;
+                    }
                     presupuesto -= (int)productoMasCaro.Precio;
                 }
             }
 
-            return productosFiltrados;
+            // Verifico que se hayan encontrado productos de ambas categorías
+            if (productoComputacion == null || productoTelefonia == null)
+            {
+                return (ProductResult.NoValidCombination, null);
+            }
+
+            productosFiltrados.Add(MapProducto(productoComputacion));
+            productosFiltrados.Add(MapProducto(productoTelefonia));
+
+            return (ProductResult.Success, productosFiltrados);
         }
 
-        public ProductoDTO MapProducto(Producto producto)
+        // Mapeo para devolver solo los datos necesarios,junto nombre de la categoria y con un formato de fecha amigable
+        private ProductoDTO MapProducto(Producto producto)
         {
             return new ProductoDTO
             {
@@ -157,11 +191,5 @@ namespace GestionStockApi.Services
                 Categoria = producto.IdCategoriaNavigation.Nombre
             };
         }
-
-        public List<ProductoDTO> MapProductos(List<Producto> productos)
-        {
-            return productos.Select(p => MapProducto(p)).ToList();
-        }
-
     }
 }

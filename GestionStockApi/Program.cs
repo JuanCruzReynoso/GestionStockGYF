@@ -13,18 +13,18 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<GestionStockDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("GestionStockDB")));
 
-// Agrega Swagger
+// Agrego Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "GestionStockApi", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Gestión de Stock API", Version = "v1" });
 
-    // Configura JWT en swagger
+    // Configuro JWT en swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = @"JWT Authorization header using the Bearer scheme. \r\n\r\n 
-                      Enter 'Bearer' [space] and then your token in the text input below.
-                      \r\n\r\nExample: 'Bearer 12345abcdef'",
+        Description = @"Autorización JWT utilizando el esquema Bearer.
+                      Ingresá 'Bearer' [espacio] y luego tu token.
+                      **Ejemplo: 'Bearer JwaSDJLE232'**",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
@@ -50,7 +50,8 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Configura autenticación con JWT
+
+// Configuro autenticación con JWT
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -67,7 +68,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Agrega servicios de la aplicación
+// Agrego servicios de la aplicación
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
 

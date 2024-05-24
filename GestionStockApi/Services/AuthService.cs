@@ -29,30 +29,30 @@ namespace GestionStockApi.Services
 
         private string GenerarToken(Usuario usuario)
         {
-            //Crea la informacion del usuario para token
+            //Creo la informacion del usuario para token
             var userClaims = new[]
             {
                 new Claim(ClaimTypes.Name, usuario.Nombre.ToString()),
             };
 
-            // Obtene la clave de seguridad de appsettings.json
+            // Obtenengo la clave de seguridad de appsettings.json
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:key"]!));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256Signature);
 
-            //Crea detalle del token
+            //Creo detalle del token
             var jwtConfig = new JwtSecurityToken(
                 claims: userClaims,
                 expires: DateTime.UtcNow.AddMinutes(10),
                 signingCredentials: credentials
                 );
 
-            // Genera y devuelve el token JWT
+            // Genero y devuelvp el token JWT
             return new JwtSecurityTokenHandler().WriteToken(jwtConfig);
         }
 
         public async Task<AuthResult> SignUp(Usuario usuario)
         {
-            // Verifica si el usuario ya existe
+            // Verifico si el usuario ya existe
             var usuarioExistente = await _dbContext.Usuarios
                 .FirstOrDefaultAsync(u => u.Nombre == usuario.Nombre);
 
@@ -61,14 +61,14 @@ namespace GestionStockApi.Services
                 return AuthResult.UserAlreadyExists;
             }
 
-            // Crea un nuevo usuario y encripta la contraseña
+            // Creo un nuevo usuario y encripto la contraseña
             var nuevoUsuario = new Usuario
             {
                 Nombre = usuario.Nombre,
                 Contraseña = Encriptador.Encriptar(usuario.Contraseña)
             };
 
-            // Guarda el usuario en la base de datos
+            // Guardo el usuario en la base de datos
             _dbContext.Usuarios.Add(nuevoUsuario);
             await _dbContext.SaveChangesAsync();
 
@@ -77,7 +77,7 @@ namespace GestionStockApi.Services
 
         public async Task<(AuthResult result, string token)> Login(Usuario usuario)
         {
-            // Primero valida nombre de usuario
+            // Primero valido que el usuario exista
             var usuarioEncontrado = await _dbContext.Usuarios
                 .FirstOrDefaultAsync(u =>
                     u.Nombre == usuario.Nombre);
@@ -87,16 +87,16 @@ namespace GestionStockApi.Services
                 return (AuthResult.UserNotFound, string.Empty);
             }
 
-            // Encripta la contraseña ingresada
+            // Encripto la contraseña ingresada
             var contraseñaEncriptada = Encriptador.Encriptar(usuario.Contraseña);
 
-            // Luego valida contraseña 
+            // Luego valido la contraseña 
             if (usuarioEncontrado.Contraseña != contraseñaEncriptada)
             {
                 return (AuthResult.IncorrectPassword, String.Empty);
             }
 
-            // Si las credenciales son correctas genera el token JWT
+            // Si las credenciales son correctas genero y devuelvo el token JWT
             var token = GenerarToken(usuarioEncontrado);
 
             return (AuthResult.Success, token);
